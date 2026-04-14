@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spaza - Online Store</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&amp;family=Space+Mono:wght@700&amp;display=swap" rel="stylesheet">
+  <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        spaza: '#FB7701',
+                        'spaza-dark': '#1a1a2e',
+                        'spaza-red': '#FF4757',
+                        'spaza-green': '#00C853'
+                    }
+                }
+            }
+        }
+    </script>
+  <style>
+        html, body { height: 100%; margin: 0; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .mono { font-family: 'Space Mono', monospace; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes flashDeal { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+        .flash-pulse { animation: flashDeal 2s ease-in-out infinite; }
+        @keyframes slideIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        .slide-in { animation: slideIn 0.3s ease-out forwards; }
+        .product-card { transition: all 0.25s ease; }
+        .product-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        .cat-pill { transition: all 0.2s; }
+        .cat-pill:hover, .cat-pill.active { background: #FB7701; color: white; }
+        .admin-overlay { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+        .toast-msg { animation: slideIn 0.3s ease-out forwards; }
+        input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 3px rgba(251,119,1,0.15); }
+        .badge-bounce { animation: badgePop 0.3s ease; }
+        @keyframes badgePop { 0%{transform:scale(0)} 50%{transform:scale(1.3)} 100%{transform:scale(1)} }
+        .strikethrough { text-decoration: line-through; color: #999; }
+    </style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full bg-gray-50 text-gray-800">
+  <div id="app" class="h-full w-full overflow-auto">
+   <!-- AUTH VIEW -->
+   <div id="authView" class="hidden h-full flex items-center justify-center px-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-6">
+     <div class="text-center mb-6"><img src="https://media.canva.com/v2/image-resize/format:PNG/height:473/quality:100/uri:ifs%3A%2F%2FM%2Fc33c3fb9-066f-42c7-9413-068f756338af/watermark:F/width:527?csig=AAAAAAAAAAAAAAAAAAAAAAJ2Yop2uvD5ixBsfzsv7THed0zTWsB2r3l24LBzeu1g&amp;exp=1776205285&amp;osig=AAAAAAAAAAAAAAAAAAAAACojWNuK7HXxGeOXVY5ZYzelKGDOTpwbZJ8F-gr_tTkq&amp;signer=media-rpc&amp;x-canva-quality=thumbnail_large" alt="Spaza Logo" class="w-20 h-20 mx-auto mb-3 rounded-lg object-cover" loading="lazy">
+      <h1 class="text-2xl font-black text-[#1a1a2e] mb-1">Spaza</h1>
+      <p class="text-sm text-gray-500">Sign in or register to shop</p>
+     </div>
+     <form onsubmit="handleAuth(event)" class="space-y-3">
+      <div>
+       <label for="authEmail" class="text-xs font-semibold text-gray-600 mb-1 block">Email</label> <input id="authEmail" type="email" required class="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="your@email.com">
+      </div>
+      <div>
+       <label for="authPassword" class="text-xs font-semibold text-gray-600 mb-1 block">Password</label> <input id="authPassword" type="password" required class="w-full border-2 border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="••••••••">
+      </div><button type="submit" id="authBtn" class="w-full bg-[#FB7701] hover:bg-[#e56d00] text-white py-2.5 rounded-full font-bold transition-colors">Sign In</button>
+     </form>
+     <p class="text-xs text-gray-400 text-center mt-4">First time? Enter your email and a new account will be created.</p>
+    </div>
+   </div><!-- HEADER -->
+   <header class="hidden bg-white sticky top-0 z-50 shadow-sm" id="headerView">
+    <div class="bg-[#1a1a2e] text-white text-center py-2 text-sm font-medium">
+     <span id="bannerText">🇿🇦 FREE Delivery on orders over R2000!</span>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+     <a href="#" class="flex items-center gap-2 shrink-0" onclick="event.preventDefault(); showView('store')">
+      <div class="w-10 h-10 bg-[#FB7701] rounded-lg flex items-center justify-center text-white font-black text-lg mono">
+       S
+      </div><span id="logoText" class="text-2xl font-black text-[#FB7701] tracking-tight hidden sm:block">Spaza</span> </a>
+     <div class="flex-1 max-w-xl relative">
+      <input id="searchInput" type="text" placeholder="Search products..." class="w-full py-2.5 pl-4 pr-24 border-2 border-[#FB7701] rounded-full text-sm" oninput="filterProducts()"> <button class="absolute right-1 top-1/2 -translate-y-1/2 bg-[#FB7701] hover:bg-[#e56d00] text-white px-5 py-1.5 rounded-full text-sm font-semibold transition-colors" onclick="filterProducts()">Search</button>
+     </div>
+     <div class="flex items-center gap-4">
+      <button onclick="showView('cart')" class="relative flex flex-col items-center text-gray-600 hover:text-[#FB7701] transition-colors" aria-label="View cart"> <i data-lucide="shopping-cart" class="w-6 h-6"></i> <span class="text-xs mt-0.5 hidden sm:block">Cart</span> <span id="cartBadge" class="absolute -top-1 -right-2 bg-[#FF4757] text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold hidden">0</span> </button> <button onclick="toggleAdmin()" class="flex flex-col items-center text-gray-600 hover:text-[#FB7701] transition-colors" aria-label="Admin panel"> <i data-lucide="settings" class="w-6 h-6"></i> <span class="text-xs mt-0.5 hidden sm:block">Admin</span> </button> <button onclick="logout()" class="flex flex-col items-center text-gray-600 hover:text-[#FB7701] transition-colors" aria-label="Logout"> <i data-lucide="log-out" class="w-6 h-6"></i> <span class="text-xs mt-0.5 hidden sm:block">Logout</span> </button>
+     </div>
+    </div>
+   </header><!-- STORE VIEW -->
+   <div id="storeView" class="hidden">
+    <!-- Categories -->
+    <div class="max-w-7xl mx-auto px-4 py-4">
+     <div id="categoryBar" class="flex gap-2 overflow-x-auto hide-scroll pb-2"></div>
+    </div><!-- Flash Deals Banner -->
+    <div class="max-w-7xl mx-auto px-4 mb-4">
+     <div class="bg-gradient-to-r from-[#FF4757] to-[#FB7701] rounded-2xl p-5 text-white flex items-center justify-between flash-pulse cursor-pointer" onclick="setCategory('featured')">
+      <div>
+       <div class="flex items-center gap-2 mb-1"><i data-lucide="zap" class="w-5 h-5"></i><span class="font-bold text-lg">Flash Deals</span>
+       </div>
+       <p class="text-sm opacity-90">Limited time offers — grab them before they're gone!</p>
+      </div><i data-lucide="chevron-right" class="w-6 h-6"></i>
+     </div>
+    </div><!-- Products Grid -->
+    <div class="max-w-7xl mx-auto px-4 pb-8">
+     <div id="productsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+     <div id="emptyState" class="hidden text-center py-16">
+      <div class="text-6xl mb-4">
+       🛒
+      </div>
+      <h3 class="text-xl font-bold mb-2">No products yet</h3>
+      <p class="text-gray-500 mb-4">Open the Admin panel to add products to your store.</p><button onclick="toggleAdmin()" class="bg-[#FB7701] text-white px-6 py-2.5 rounded-full font-semibold hover:bg-[#e56d00] transition-colors">Open Admin</button>
+     </div>
+    </div>
+   </div><!-- CART VIEW -->
+   <div id="cartView" class="hidden max-w-3xl mx-auto px-4 py-6">
+    <button onclick="showView('store')" class="flex items-center gap-2 text-[#FB7701] font-semibold mb-4 hover:underline"><i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Store</button>
+    <h2 class="text-2xl font-black mb-4">Your Cart</h2>
+    <div id="cartItems"></div>
+    <div id="cartEmpty" class="text-center py-12 hidden">
+     <div class="text-5xl mb-3">
+      🧺
+     </div>
+     <p class="text-gray-500">Your cart is empty</p>
+    </div>
+    <div id="cartSummary" class="hidden mt-6 bg-white rounded-2xl p-5 shadow-sm">
+     <div id="deliveryNote" class="text-xs text-gray-400 mb-3 p-2 bg-gray-50 rounded-lg"></div>
+     <div class="flex justify-between text-lg font-bold mb-4"><span>Total</span><span id="cartTotal" class="text-[#FB7701]">R0.00</span>
+     </div><button onclick="checkout()" class="w-full bg-[#FB7701] hover:bg-[#e56d00] text-white py-3 rounded-full font-bold text-lg transition-colors flex items-center justify-center gap-2"><i data-lucide="send" class="w-5 h-5"></i> Order via WhatsApp</button>
+    </div>
+   </div><!-- PRODUCT DETAIL MODAL -->
+   <div id="productModal" class="hidden fixed inset-0 z-[60] admin-overlay flex items-end sm:items-center justify-center" onclick="if(event.target===this)closeProductModal()">
+    <div class="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[85%] overflow-auto slide-in">
+     <div id="productModalContent"></div>
+    </div>
+   </div><!-- ADMIN PANEL -->
+   <div id="adminOverlay" class="hidden fixed inset-0 z-[70] admin-overlay flex items-center justify-center p-4" onclick="if(event.target===this)toggleAdmin()">
+    <div class="bg-white w-full max-w-2xl rounded-2xl max-h-[90%] overflow-auto slide-in">
+     <div class="sticky top-0 bg-white border-b px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
+      <h2 class="text-xl font-black flex items-center gap-2"><i data-lucide="shield" class="w-5 h-5 text-[#FB7701]"></i> Admin Panel</h2><button onclick="toggleAdmin()" class="p-1 hover:bg-gray-100 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+     </div>
+     <div id="adminContent" class="p-5">
+      <!-- Add/Edit Product Form -->
+      <div class="bg-gray-50 rounded-xl p-4 mb-5">
+       <h3 id="formTitle" class="font-bold mb-3">Add New Product</h3>
+       <form id="productForm" onsubmit="handleProductSubmit(event)" class="space-y-3">
+        <input type="hidden" id="editId" value="">
+        <div class="grid grid-cols-2 gap-3">
+         <div class="col-span-2">
+          <label for="pName" class="text-xs font-semibold text-gray-500 mb-1 block">Product Name</label> <input id="pName" required class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Wireless Earbuds">
+         </div>
+         <div>
+          <label for="pPrice" class="text-xs font-semibold text-gray-500 mb-1 block">Price (R)</label> <input id="pPrice" type="number" step="0.01" required class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="99.99">
+         </div>
+         <div>
+          <label for="pOrigPrice" class="text-xs font-semibold text-gray-500 mb-1 block">Original Price (R)</label> <input id="pOrigPrice" type="number" step="0.01" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="199.99">
+         </div>
+         <div>
+          <label for="pCategory" class="text-xs font-semibold text-gray-500 mb-1 block">Category</label> <select id="pCategory" required class="w-full border rounded-lg px-3 py-2 text-sm"> <option value="Electronics">Electronics</option> <option value="Fashion">Fashion</option> <option value="Home">Home &amp; Garden</option> <option value="Beauty">Beauty</option> <option value="Sports">Sports</option> <option value="Toys">Toys &amp; Games</option> <option value="Kitchen">Kitchen</option> <option value="Auto">Auto</option> </select>
+         </div>
+         <div>
+          <label for="pEmoji" class="text-xs font-semibold text-gray-500 mb-1 block">Product Emoji</label> <input id="pEmoji" required class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="🎧" maxlength="4">
+         </div>
+         <div class="col-span-2">
+          <label for="pDesc" class="text-xs font-semibold text-gray-500 mb-1 block">Description</label> <textarea id="pDesc" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Short description..."></textarea>
+         </div>
+         <div>
+          <label for="pRating" class="text-xs font-semibold text-gray-500 mb-1 block">Rating (1-5)</label> <input id="pRating" type="number" min="1" max="5" step="0.1" value="4.5" class="w-full border rounded-lg px-3 py-2 text-sm">
+         </div>
+         <div>
+          <label for="pSold" class="text-xs font-semibold text-gray-500 mb-1 block">Sold Count</label> <input id="pSold" type="number" value="0" class="w-full border rounded-lg px-3 py-2 text-sm">
+         </div>
+         <div class="flex items-center gap-4 col-span-2">
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="pStock" checked> In Stock</label> <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="pFeatured"> Featured Deal</label>
+         </div>
+        </div>
+        <div class="flex gap-2">
+         <button type="submit" id="formBtn" class="bg-[#FB7701] hover:bg-[#e56d00] text-white px-6 py-2 rounded-lg font-semibold text-sm transition-colors">Add Product</button> <button type="button" id="cancelEdit" class="hidden bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors" onclick="cancelEditProduct()">Cancel</button>
+        </div>
+       </form>
+      </div><!-- Product List -->
+      <h3 class="font-bold mb-3">Products (<span id="productCount">0</span>)</h3>
+      <div id="adminProductList" class="space-y-2 max-h-72 overflow-auto"></div>
+     </div>
+    </div>
+   </div><!-- TOAST -->
+   <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] hidden">
+    <div class="bg-[#1a1a2e] text-white px-5 py-3 rounded-full shadow-lg text-sm font-medium toast-msg flex items-center gap-2">
+     <i data-lucide="check-circle" class="w-4 h-4 text-[#00C853]"></i> <span id="toastMsg"></span>
+    </div>
+   </div>
+  </div>
+  <script>
+// ====== STATE ======
+let allProducts = [];
+let cart = [];
+let activeCategory = 'All';
+let editingProduct = null;
+let adminOpen = false;
+let currentUser = null;
+let allUsers = [];
+
+const defaultConfig = {
+    store_name: 'Spaza',
+    banner_text: '🇿🇦 FREE Delivery on orders over R2000!',
+    tagline: "South Africa's Smartest Online Store",
+    whatsapp_number: '+27XXXXXXXXXX',
+    admin_password: 'admin123',
+    background_color: '#f5f5f5',
+    card_color: '#ffffff',
+    text_color: '#1a1a2e',
+    primary_color: '#FB7701',
+    accent_color: '#FF4757',
+    font_family: 'Plus Jakarta Sans',
+    font_size: 14
+};
+
+// ====== ELEMENT SDK ======
+window.elementSdk.init({
+    defaultConfig,
+    onConfigChange: async (config) => {
+        const bg = config.background_color || defaultConfig.background_color;
+        const card = config.card_color || defaultConfig.card_color;
+        const txt = config.text_color || defaultConfig.text_color;
+        const primary = config.primary_color || defaultConfig.primary_color;
+        const accent = config.accent_color || defaultConfig.accent_color;
+        const font = config.font_family || defaultConfig.font_family;
+        const size = config.font_size || defaultConfig.font_size;
+
+        document.body.style.background = bg;
+        document.body.style.color = txt;
+        document.body.style.fontFamily = `${font}, Plus Jakarta Sans, sans-serif`;
+        document.body.style.fontSize = size + 'px';
+
+        document.getElementById('bannerText').textContent = config.banner_text || defaultConfig.banner_text;
+        document.getElementById('logoText').textContent = config.store_name || defaultConfig.store_name;
+
+        document.querySelectorAll('.product-card').forEach(c => c.style.background = card);
+        document.querySelectorAll('.primary-btn').forEach(b => { b.style.background = primary; });
+        document.querySelectorAll('.accent-el').forEach(e => e.style.background = accent);
+    },
+    mapToCapabilities: (config) => ({
+        recolorables: [
+            { get: () => config.background_color || defaultConfig.background_color, set: (v) => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); }},
+            { get: () => config.card_color || defaultConfig.card_color, set: (v) => { config.card_color = v; window.elementSdk.setConfig({ card_color: v }); }},
+            { get: () => config.text_color || defaultConfig.text_color, set: (v) => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); }},
+            { get: () => config.primary_color || defaultConfig.primary_color, set: (v) => { config.primary_color = v; window.elementSdk.setConfig({ primary_color: v }); }},
+            { get: () => config.accent_color || defaultConfig.accent_color, set: (v) => { config.accent_color = v; window.elementSdk.setConfig({ accent_color: v }); }}
+        ],
+        borderables: [],
+        fontEditable: {
+            get: () => config.font_family || defaultConfig.font_family,
+            set: (v) => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
+        },
+        fontSizeable: {
+            get: () => config.font_size || defaultConfig.font_size,
+            set: (v) => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
+        }
+    }),
+    mapToEditPanelValues: (config) => new Map([
+        ['store_name', config.store_name || defaultConfig.store_name],
+        ['banner_text', config.banner_text || defaultConfig.banner_text],
+        ['tagline', config.tagline || defaultConfig.tagline],
+        ['whatsapp_number', config.whatsapp_number || defaultConfig.whatsapp_number],
+        ['admin_password', config.admin_password || defaultConfig.admin_password]
+    ])
+});
+
+// ====== DATA SDK ======
+const dataHandler = {
+    onDataChanged(data) {
+        allProducts = data;
+        if (currentUser) {
+            renderCategories();
+            renderProducts();
+            renderAdminList();
+            document.getElementById('productCount').textContent = data.length;
+        }
+    }
+};
+
+(async () => {
+    const res = await window.dataSdk.init(dataHandler);
+    if (!res.isOk) console.error('Data SDK init failed');
+    checkAuth();
+    lucide.createIcons();
+})();
+
+// ====== AUTH ======
+function checkAuth() {
+    currentUser = localStorage.getItem('spazaUser');
+    if (currentUser) {
+        document.getElementById('authView').classList.add('hidden');
+        document.getElementById('headerView').classList.remove('hidden');
+        document.getElementById('storeView').classList.remove('hidden');
+    } else {
+        document.getElementById('authView').classList.remove('hidden');
+        document.getElementById('headerView').classList.add('hidden');
+        document.getElementById('storeView').classList.add('hidden');
+        document.getElementById('cartView').classList.add('hidden');
+    }
+    lucide.createIcons();
+}
+
+function handleAuth(e) {
+    e.preventDefault();
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const btn = document.getElementById('authBtn');
+
+    if (!email || !password) {
+        showToast('Please enter email and password');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+
+    // Simulate auth delay
+    setTimeout(() => {
+        localStorage.setItem('spazaUser', email);
+        currentUser = email;
+        document.getElementById('authEmail').value = '';
+        document.getElementById('authPassword').value = '';
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+        showToast(`Welcome, ${email}! 👋`);
+        checkAuth();
+    }, 500);
+}
+
+function logout() {
+    localStorage.removeItem('spazaUser');
+    cart = [];
+    updateCartBadge();
+    currentUser = null;
+    document.getElementById('searchInput').value = '';
+    activeCategory = 'All';
+    checkAuth();
+    showToast('You\'ve been logged out');
+}
+
+// ====== VIEWS ======
+function showView(view) {
+    if (!currentUser) return;
+    document.getElementById('storeView').classList.toggle('hidden', view !== 'store');
+    document.getElementById('cartView').classList.toggle('hidden', view !== 'cart');
+    if (view === 'cart') renderCart();
+    if (view === 'store') renderProducts();
+}
+
+// ====== CATEGORIES ======
+function getCategories() {
+    const cats = new Set(allProducts.map(p => p.category).filter(Boolean));
+    return ['All', 'Featured', ...Array.from(cats).sort()];
+}
+
+function renderCategories() {
+    const bar = document.getElementById('categoryBar');
+    const cats = getCategories();
+    bar.innerHTML = cats.map(c =>
+        `<button class="cat-pill shrink-0 px-4 py-2 rounded-full text-sm font-semibold border ${activeCategory === c ? 'bg-[#FB7701] text-white border-[#FB7701]' : 'bg-white text-gray-600 border-gray-200'}" onclick="setCategory('${c}')">${c === 'Featured' ? '⚡ ' + c : c}</button>`
+    ).join('');
+}
+
+function setCategory(cat) {
+    activeCategory = cat;
+    renderCategories();
+    renderProducts();
+}
+
+// ====== PRODUCTS ======
+function filterProducts() {
+    renderProducts();
+}
+
+function getFilteredProducts() {
+    let prods = [...allProducts];
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    if (q) prods = prods.filter(p => (p.name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q));
+    if (activeCategory === 'Featured') prods = prods.filter(p => p.featured);
+    else if (activeCategory !== 'All') prods = prods.filter(p => p.category === activeCategory);
+    return prods;
+}
+
+function renderProducts() {
+    const grid = document.getElementById('productsGrid');
+    const empty = document.getElementById('emptyState');
+    const prods = getFilteredProducts();
+
+    if (allProducts.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+
+    if (prods.length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400"><div class="text-4xl mb-2">🔍</div>No products found</div>';
+        return;
+    }
+
+    const existingMap = new Map([...grid.children].map(el => [el.dataset.pid, el]));
+    const fragment = document.createDocumentFragment();
+
+    prods.forEach((p, i) => {
+        const id = p.__backendId;
+        let el = existingMap.get(id);
+        if (el) {
+            updateProductCard(el, p);
+            existingMap.delete(id);
+        } else {
+            el = createProductCard(p, i);
+        }
+        fragment.appendChild(el);
+    });
+
+    existingMap.forEach(el => el.remove());
+    grid.innerHTML = '';
+    grid.appendChild(fragment);
+    lucide.createIcons();
+}
+
+function createProductCard(p, i) {
+    const div = document.createElement('div');
+    div.dataset.pid = p.__backendId;
+    div.className = 'product-card bg-white rounded-xl overflow-hidden cursor-pointer shadow-sm slide-in';
+    div.style.animationDelay = (i * 0.04) + 's';
+    div.style.opacity = '0';
+    div.onclick = () => openProductModal(p.__backendId);
+    updateProductCardInner(div, p);
+    return div;
+}
+
+function updateProductCard(el, p) {
+    updateProductCardInner(el, p);
+}
+
+function updateProductCardInner(el, p) {
+    const discount = p.original_price && p.original_price > p.price ? Math.round((1 - p.price / p.original_price) * 100) : 0;
+    const stars = '★'.repeat(Math.floor(p.rating || 4)) + (p.rating % 1 >= 0.5 ? '½' : '');
+    el.innerHTML = `
+        <div class="relative bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center" style="height:140px">
+            <span class="text-5xl">${p.image_emoji || '📦'}</span>
+            ${discount > 0 ? `<span class="absolute top-2 left-2 bg-[#FF4757] accent-el text-white text-xs font-bold px-2 py-0.5 rounded-full">-${discount}%</span>` : ''}
+            ${p.featured ? `<span class="absolute top-2 right-2 text-lg">⚡</span>` : ''}
+            ${!p.in_stock ? `<div class="absolute inset-0 bg-black/40 flex items-center justify-center"><span class="bg-white text-gray-700 px-3 py-1 rounded-full text-xs font-bold">Out of Stock</span></div>` : ''}
+        </div>
+        <div class="p-3">
+            <p class="text-xs text-gray-400 mb-0.5">${p.category || ''}</p>
+            <h3 class="font-semibold text-sm leading-tight mb-1 line-clamp-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.name || 'Product'}</h3>
+            <div class="flex items-baseline gap-1.5 mb-1">
+                <span class="text-[#FB7701] font-black text-lg">R${(p.price || 0).toFixed(2)}</span>
+                ${p.original_price && p.original_price > p.price ? `<span class="strikethrough text-xs">R${p.original_price.toFixed(2)}</span>` : ''}
+            </div>
+            <div class="flex items-center gap-1 text-xs text-gray-400">
+                <span class="text-yellow-500">${stars}</span>
+                <span>${p.sold_count || 0} sold</span>
+            </div>
+        </div>`;
+}
+
+// ====== PRODUCT MODAL ======
+function openProductModal(id) {
+    const p = allProducts.find(x => x.__backendId === id);
+    if (!p) return;
+    const discount = p.original_price && p.original_price > p.price ? Math.round((1 - p.price / p.original_price) * 100) : 0;
+    const stars = '★'.repeat(Math.floor(p.rating || 4));
+    document.getElementById('productModalContent').innerHTML = `
+        <div class="bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center" style="height:220px">
+            <span class="text-7xl">${p.image_emoji || '📦'}</span>
+        </div>
+        <div class="p-5">
+            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">${p.category || ''}</p>
+            <h2 class="text-xl font-black mb-2">${p.name || 'Product'}</h2>
+            <div class="flex items-baseline gap-2 mb-3">
+                <span class="text-[#FB7701] font-black text-2xl">R${(p.price || 0).toFixed(2)}</span>
+                ${p.original_price && p.original_price > p.price ? `<span class="strikethrough text-sm">R${p.original_price.toFixed(2)}</span><span class="bg-[#FF4757] text-white text-xs font-bold px-2 py-0.5 rounded-full">-${discount}%</span>` : ''}
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-500 mb-3"><span class="text-yellow-500">${stars}</span> ${p.rating || 4.5} · ${p.sold_count || 0} sold</div>
+            <p class="text-sm text-gray-600 mb-4">${p.description || 'No description.'}</p>
+            ${p.in_stock ? `<button onclick="addToCart('${p.__backendId}')" class="w-full bg-[#FB7701] primary-btn hover:bg-[#e56d00] text-white py-3 rounded-full font-bold text-lg transition-colors flex items-center justify-center gap-2"><i data-lucide="shopping-cart" class="w-5 h-5"></i> Add to Cart</button>` : `<button disabled class="w-full bg-gray-300 text-gray-500 py-3 rounded-full font-bold">Out of Stock</button>`}
+            <button onclick="closeProductModal()" class="w-full mt-2 text-gray-400 text-sm py-2">Close</button>
+        </div>`;
+    document.getElementById('productModal').classList.remove('hidden');
+    lucide.createIcons();
+}
+
+function closeProductModal() {
+    document.getElementById('productModal').classList.add('hidden');
+}
+
+// ====== CART ======
+function addToCart(id) {
+    const p = allProducts.find(x => x.__backendId === id);
+    if (!p || !p.in_stock) return;
+    const existing = cart.find(c => c.id === id);
+    if (existing) existing.qty++;
+    else cart.push({ id, qty: 1 });
+    updateCartBadge();
+    showToast(`${p.name} added to cart!`);
+    closeProductModal();
+}
+
+function updateCartBadge() {
+    const badge = document.getElementById('cartBadge');
+    const total = cart.reduce((s, c) => s + c.qty, 0);
+    badge.textContent = total;
+    badge.classList.toggle('hidden', total === 0);
+    if (total > 0) { badge.classList.remove('badge-bounce'); void badge.offsetWidth; badge.classList.add('badge-bounce'); }
+}
+
+function renderCart() {
+    const container = document.getElementById('cartItems');
+    const emptyEl = document.getElementById('cartEmpty');
+    const summaryEl = document.getElementById('cartSummary');
+
+    if (cart.length === 0) {
+        container.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        summaryEl.classList.add('hidden');
+        return;
+    }
+    emptyEl.classList.add('hidden');
+    summaryEl.classList.remove('hidden');
+
+    container.innerHTML = cart.map(c => {
+        const p = allProducts.find(x => x.__backendId === c.id);
+        if (!p) return '';
+        return `<div class="bg-white rounded-xl p-4 mb-2 flex items-center gap-3 shadow-sm">
+            <span class="text-3xl">${p.image_emoji || '📦'}</span>
+            <div class="flex-1 min-w-0">
+                <h4 class="font-semibold text-sm truncate">${p.name}</h4>
+                <p class="text-[#FB7701] font-bold">R${(p.price * c.qty).toFixed(2)}</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="changeQty('${c.id}',-1)" class="w-7 h-7 rounded-full border flex items-center justify-center text-sm font-bold hover:bg-gray-100">−</button>
+                <span class="font-bold text-sm w-5 text-center">${c.qty}</span>
+                <button onclick="changeQty('${c.id}',1)" class="w-7 h-7 rounded-full border flex items-center justify-center text-sm font-bold hover:bg-gray-100">+</button>
+            </div>
+            <button onclick="removeFromCart('${c.id}')" class="text-gray-300 hover:text-red-500 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        </div>`;
+    }).join('');
+
+    const total = cart.reduce((s, c) => {
+        const p = allProducts.find(x => x.__backendId === c.id);
+        return s + (p ? p.price * c.qty : 0);
+    }, 0);
+    
+    const deliveryNote = document.getElementById('deliveryNote');
+    if (total >= 2000) {
+        deliveryNote.innerHTML = '✅ <strong>FREE Delivery!</strong> Your order qualifies for free delivery.';
+    } else {
+        const remaining = (2000 - total).toFixed(2);
+        deliveryNote.innerHTML = `📦 Add R${remaining} more for free delivery.`;
+    }
+
+    document.getElementById('cartTotal').textContent = 'R' + total.toFixed(2);
+    lucide.createIcons();
+}
+
+function changeQty(id, d) {
+    const item = cart.find(c => c.id === id);
+    if (!item) return;
+    item.qty += d;
+    if (item.qty <= 0) cart = cart.filter(c => c.id !== id);
+    updateCartBadge();
+    renderCart();
+}
+
+function removeFromCart(id) {
+    cart = cart.filter(c => c.id !== id);
+    updateCartBadge();
+    renderCart();
+}
+
+function checkout() {
+    const total = cart.reduce((s, c) => {
+        const p = allProducts.find(x => x.__backendId === c.id);
+        return s + (p ? p.price * c.qty : 0);
+    }, 0);
+    
+    const items = cart.map(c => {
+        const p = allProducts.find(x => x.__backendId === c.id);
+        return p ? `${c.qty}x ${p.name} - R${(p.price * c.qty).toFixed(2)}` : '';
+    }).filter(Boolean).join('%0A');
+    
+    const message = `Hi! I'd like to place an order:%0A${items}%0A%0ATotal: R${total.toFixed(2)}`;
+    const whatsappUrl = `https://wa.me/${(window.elementSdk.config.whatsapp_number || defaultConfig.whatsapp_number).replace(/\D/g, '')}?text=${message}`;
+    
+    window.open(whatsappUrl, '_blank');
+    cart = [];
+    updateCartBadge();
+    renderCart();
+    showToast(`Order sent via WhatsApp! 📲`);
+    setTimeout(() => showView('store'), 1500);
+}
+
+// ====== ADMIN ======
+function toggleAdmin() {
+    if (!currentUser) return;
+    const isAdmin = currentUser === 'me/admin' || currentUser === 'johnblackpipes@gmail.com';
+    if (!isAdmin) {
+        showToast('❌ Admin access denied');
+        return;
+    }
+    adminOpen = !adminOpen;
+    document.getElementById('adminOverlay').classList.toggle('hidden', !adminOpen);
+    if (adminOpen) { renderAdminList(); lucide.createIcons(); }
+}
+
+function renderAdminList() {
+    const list = document.getElementById('adminProductList');
+    if (allProducts.length === 0) {
+        list.innerHTML = '<p class="text-gray-400 text-center py-4 text-sm">No products added yet.</p>';
+        return;
+    }
+    list.innerHTML = allProducts.map(p => `
+        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <span class="text-2xl">${p.image_emoji || '📦'}</span>
+            <div class="flex-1 min-w-0">
+                <h4 class="font-semibold text-sm truncate">${p.name}</h4>
+                <p class="text-xs text-gray-400">${p.category} · R${(p.price||0).toFixed(2)} ${p.featured ? '⚡' : ''} ${!p.in_stock ? '(Out of stock)' : ''}</p>
+            </div>
+            <button onclick="editProduct('${p.__backendId}')" class="p-1.5 hover:bg-white rounded-lg transition-colors"><i data-lucide="edit" class="w-4 h-4 text-gray-500"></i></button>
+            <button onclick="deleteProduct('${p.__backendId}')" class="p-1.5 hover:bg-red-50 rounded-lg transition-colors delete-btn" data-id="${p.__backendId}"><i data-lucide="trash-2" class="w-4 h-4 text-red-400"></i></button>
+        </div>
+    `).join('');
+    lucide.createIcons();
+}
+
+async function handleProductSubmit(e) {
+    e.preventDefault();
+    if (allProducts.length >= 999 && !editingProduct) {
+        showToast('Product limit reached (999). Delete some first.');
+        return;
+    }
+    const btn = document.getElementById('formBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const data = {
+        name: document.getElementById('pName').value,
+        price: parseFloat(document.getElementById('pPrice').value) || 0,
+        original_price: parseFloat(document.getElementById('pOrigPrice').value) || 0,
+        category: document.getElementById('pCategory').value,
+        image_emoji: document.getElementById('pEmoji').value || '📦',
+        description: document.getElementById('pDesc').value,
+        rating: parseFloat(document.getElementById('pRating').value) || 4.5,
+        sold_count: parseInt(document.getElementById('pSold').value) || 0,
+        in_stock: document.getElementById('pStock').checked,
+        featured: document.getElementById('pFeatured').checked
+    };
+
+    let res;
+    if (editingProduct) {
+        res = await window.dataSdk.update({ ...editingProduct, ...data });
+    } else {
+        res = await window.dataSdk.create(data);
+    }
+
+    btn.disabled = false;
+    if (res.isOk) {
+        showToast(editingProduct ? 'Product updated!' : 'Product added!');
+        cancelEditProduct();
+    } else {
+        showToast('Error saving product.');
+        btn.textContent = editingProduct ? 'Update Product' : 'Add Product';
+    }
+}
+
+function editProduct(id) {
+    const p = allProducts.find(x => x.__backendId === id);
+    if (!p) return;
+    editingProduct = p;
+    document.getElementById('formTitle').textContent = 'Edit Product';
+    document.getElementById('formBtn').textContent = 'Update Product';
+    document.getElementById('cancelEdit').classList.remove('hidden');
+    document.getElementById('pName').value = p.name || '';
+    document.getElementById('pPrice').value = p.price || '';
+    document.getElementById('pOrigPrice').value = p.original_price || '';
+    document.getElementById('pCategory').value = p.category || 'Electronics';
+    document.getElementById('pEmoji').value = p.image_emoji || '';
+    document.getElementById('pDesc').value = p.description || '';
+    document.getElementById('pRating').value = p.rating || 4.5;
+    document.getElementById('pSold').value = p.sold_count || 0;
+    document.getElementById('pStock').checked = p.in_stock !== false;
+    document.getElementById('pFeatured').checked = !!p.featured;
+    document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditProduct() {
+    editingProduct = null;
+    document.getElementById('formTitle').textContent = 'Add New Product';
+    document.getElementById('formBtn').textContent = 'Add Product';
+    document.getElementById('cancelEdit').classList.add('hidden');
+    document.getElementById('productForm').reset();
+    document.getElementById('pRating').value = 4.5;
+    document.getElementById('pStock').checked = true;
+}
+
+async function deleteProduct(id) {
+    const p = allProducts.find(x => x.__backendId === id);
+    if (!p) return;
+    const btn = document.querySelector(`.delete-btn[data-id="${id}"]`);
+    if (!btn) return;
+    if (btn.dataset.confirming === 'true') {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="text-xs">...</span>';
+        const res = await window.dataSdk.delete(p);
+        btn.disabled = false;
+        if (res.isOk) {
+            showToast('Product deleted.');
+            cart = cart.filter(c => c.id !== id);
+            updateCartBadge();
+        } else {
+            showToast('Error deleting product.');
+            renderAdminList();
+        }
+    } else {
+        btn.dataset.confirming = 'true';
+        btn.innerHTML = '<span class="text-xs text-red-500 font-bold">Confirm?</span>';
+        setTimeout(() => { if(btn) { btn.dataset.confirming = ''; renderAdminList(); } }, 3000);
+    }
+}
+
+// ====== TOAST ======
+function showToast(msg) {
+    const el = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    el.classList.remove('hidden');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.add('hidden'), 2500);
+}
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ec494f25443f4f0',t:'MTc3NjE4OTMzMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
